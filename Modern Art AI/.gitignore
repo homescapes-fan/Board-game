@@ -1,0 +1,6 @@
+# 保存した対局データ
+*.pkl
+
+# パラメータ調整の途中経過（本番の tuned.json だけ残す）
+params/*.tmp
+params/tuned_round*.json

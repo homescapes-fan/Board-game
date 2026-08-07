@@ -1,0 +1,520 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>モダンアート AI アドバイザー</title>
+<style>
+:root {
+  --bg: #14161a; --panel: #1c1f26; --line: #2c313b; --ink: #e8eaed; --dim: #9aa3b2;
+  --accent: #ffb454; --good: #6cc78e; --bad: #e5715f;
+  --c0: #e8c53f; --c1: #6fbf73; --c2: #e88ab0; --c3: #6aa8e8; --c4: #d8b48c;
+}
+@media (prefers-color-scheme: light) {
+  :root { --bg:#f6f7f9; --panel:#fff; --line:#dfe3e9; --ink:#1b1e23; --dim:#5d6674; --accent:#b8730f; }
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink);
+  font: 15px/1.6 system-ui, "Hiragino Sans", "Noto Sans JP", sans-serif;
+}
+.wrap { max-width: 1180px; margin: 0 auto; padding: 16px; }
+h1 { font-size: 18px; margin: 0 0 4px; }
+.sub { color: var(--dim); font-size: 13px; margin-bottom: 16px; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px; margin-bottom: 14px; }
+.panel h2 { font-size: 13px; margin: 0 0 10px; color: var(--dim); font-weight: 600; letter-spacing: .04em; }
+.cols { display: grid; grid-template-columns: 1fr 380px; gap: 14px; align-items: start; }
+@media (max-width: 900px) { .cols { grid-template-columns: 1fr; } }
+
+button { font: inherit; color: inherit; cursor: pointer; border-radius: 8px; border: 1px solid var(--line);
+         background: var(--panel); padding: 7px 12px; }
+button:hover:not(:disabled) { border-color: var(--accent); }
+button:disabled { opacity: .3; cursor: default; }
+button.primary { background: var(--accent); color: #16181d; border-color: transparent; font-weight: 700; }
+input[type=number], select { font: inherit; color: inherit; background: var(--bg); border: 1px solid var(--line);
+                             border-radius: 8px; padding: 7px 10px; width: 110px; }
+
+/* ---- カード選択 ---- */
+.grid { display: grid; grid-template-columns: 40px repeat(5, 1fr); gap: 6px; }
+.grid .head { color: var(--dim); font-size: 12px; text-align: center; align-self: center; }
+.card { position: relative; border-radius: 8px; border: 1px solid var(--line); background: var(--bg);
+        padding: 8px 4px 6px; text-align: center; line-height: 1.25; }
+.card .t { font-size: 13px; font-weight: 600; }
+.card .n { font-size: 11px; color: var(--dim); }
+.card[data-a="0"] { border-left: 4px solid var(--c0); }
+.card[data-a="1"] { border-left: 4px solid var(--c1); }
+.card[data-a="2"] { border-left: 4px solid var(--c2); }
+.card[data-a="3"] { border-left: 4px solid var(--c3); }
+.card[data-a="4"] { border-left: 4px solid var(--c4); }
+.card.pick { outline: 2px solid var(--accent); }
+.card.best { box-shadow: 0 0 0 2px var(--accent) inset; }
+.rowlab { font-size: 13px; font-weight: 700; align-self: center; text-align: center; }
+
+/* ---- 盤面 ---- */
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 6px 8px; text-align: right; border-bottom: 1px solid var(--line); }
+th:first-child, td:first-child { text-align: left; }
+th { color: var(--dim); font-weight: 600; font-size: 12px; }
+tr.me td { background: rgba(255,180,84,.08); }
+.artists { display: flex; gap: 8px; flex-wrap: wrap; }
+.art { flex: 1 1 90px; border-radius: 8px; border: 1px solid var(--line); padding: 8px; }
+.art .name { font-weight: 700; font-size: 13px; }
+.art .val { font-size: 20px; font-weight: 700; }
+.art .cnt { font-size: 12px; color: var(--dim); }
+.art[data-a="0"] { border-top: 3px solid var(--c0); }
+.art[data-a="1"] { border-top: 3px solid var(--c1); }
+.art[data-a="2"] { border-top: 3px solid var(--c2); }
+.art[data-a="3"] { border-top: 3px solid var(--c3); }
+.art[data-a="4"] { border-top: 3px solid var(--c4); }
+.art.hot { background: rgba(229,113,95,.12); }
+
+/* ---- 推奨 ---- */
+.head-advice { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.headline { font-size: 17px; font-weight: 700; color: var(--accent); }
+.note { color: var(--dim); font-size: 13px; }
+.bars { margin-top: 10px; }
+.bar { display: grid; grid-template-columns: 116px 1fr 78px; gap: 8px; align-items: center;
+       padding: 3px 0; font-size: 13px; }
+.bar .lab { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bar .track { background: var(--bg); border-radius: 4px; height: 16px; overflow: hidden; }
+.bar .fill { height: 100%; background: var(--dim); }
+.bar.top .fill { background: var(--accent); }
+.bar .num { text-align: right; color: var(--dim); font-variant-numeric: tabular-nums; }
+.spin { color: var(--dim); font-size: 13px; }
+
+.log { font-size: 12px; color: var(--dim); max-height: 150px; overflow-y: auto; }
+.log div { padding: 1px 0; }
+.err { color: var(--bad); font-size: 13px; margin-top: 8px; min-height: 20px; }
+.prompt { font-size: 15px; font-weight: 600; margin-bottom: 10px; }
+.hint { font-size: 12px; color: var(--dim); margin-top: 6px; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.pill { border-radius: 999px; padding: 2px 10px; font-size: 12px; border: 1px solid var(--line); color: var(--dim); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>モダンアート AI アドバイザー</h1>
+  <div class="sub">金額はすべて千円単位（24 = 24,000円）</div>
+
+  <!-- 設定 -->
+  <div class="panel" id="setup">
+    <h2>ゲームを始める</h2>
+    <div class="row">
+      <label>人数 <select id="n"><option>3</option><option selected>4</option><option>5</option></select></label>
+      <label>自分は何番目スタート <select id="hero"></select></label>
+      <button class="primary" id="start">開始</button>
+    </div>
+    <div class="hint">1番目がスタートプレイヤーです。</div>
+  </div>
+
+  <div id="game" style="display:none">
+    <div class="cols">
+      <div>
+        <!-- 次にすること -->
+        <div class="panel">
+          <div class="prompt" id="prompt"></div>
+          <div id="input"></div>
+          <div class="err" id="err"></div>
+        </div>
+
+        <!-- 盤面 -->
+        <div class="panel">
+          <h2>価格表と出品数</h2>
+          <div class="artists" id="artists"></div>
+        </div>
+        <div class="panel">
+          <h2>プレイヤー</h2>
+          <table id="players"></table>
+        </div>
+      </div>
+
+      <div>
+        <!-- 推奨 -->
+        <div class="panel">
+          <h2>AI の推奨</h2>
+          <div id="advice"><div class="spin">自分の番になると出ます</div></div>
+        </div>
+        <div class="panel">
+          <h2>あなたの手札</h2>
+          <div id="hand"></div>
+          <div class="row" style="margin-top:10px">
+            <button id="editHand">手札を直す</button>
+            <button id="undo">1つ戻す</button>
+          </div>
+        </div>
+        <div class="panel">
+          <h2>まだ場に出ていないカード</h2>
+          <div id="unseen" style="font-size:13px"></div>
+        </div>
+        <div class="panel">
+          <h2>経過</h2>
+          <div class="log" id="log"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ARTIST_COLORS = ["c0","c1","c2","c3","c4"];
+let S = null;            // 直近の盤面
+let CARDS = [];          // 25種のカード情報
+let adviceSeq = 0;       // 古い推奨を捨てるための番号
+
+async function api(path, body) {
+  const opt = body === undefined
+    ? {} : {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)};
+  const res = await fetch(path, opt);
+  const data = await res.json();
+  if (!res.ok) {
+    $("err").textContent = data.error || "エラーが発生しました";
+    if (data.state) render(data.state);
+    return null;
+  }
+  $("err").textContent = "";
+  return data;
+}
+
+function setState(s) { if (s) { render(s); requestAdvice(); } }
+
+// ------------------------------------------------------------------ 描画
+
+function render(s) {
+  S = s;
+  CARDS = s.cards;
+  if (!s.started) { $("setup").style.display = ""; $("game").style.display = "none"; return; }
+  $("setup").style.display = "none";
+  $("game").style.display = "";
+  renderArtists(s); renderPlayers(s); renderHand(s); renderUnseen(s); renderLog(s); renderPrompt(s);
+}
+
+function renderArtists(s) {
+  const el = $("artists"); el.innerHTML = "";
+  for (let a = 0; a < 5; a++) {
+    const d = document.createElement("div");
+    d.className = "art" + (s.roundCounts[a] >= 4 ? " hot" : "");
+    d.dataset.a = a;
+    const val = s.boardValue[a] ? s.boardValue[a] : "—";
+    d.innerHTML = `<div class="name">${CARDS[a*5].artistJa}</div>
+                   <div class="val">${val}</div>
+                   <div class="cnt">出品 ${s.roundCounts[a]} / 5</div>`;
+    el.appendChild(d);
+  }
+}
+
+function renderPlayers(s) {
+  let head = "<tr><th>ラウンド " + s.round + " / 4</th>";
+  for (let p = 0; p < s.n; p++) head += `<th>P${p+1}${p === s.hero ? "（自分）" : ""}</th>`;
+  head += "</tr>";
+  let rows = "<tr><td>所持金</td>";
+  for (let p = 0; p < s.n; p++) rows += `<td>${s.money[p]}</td>`;
+  rows += "</tr>";
+  for (let a = 0; a < 5; a++) {
+    if (!s.collections.some(c => c[a])) continue;
+    rows += `<tr><td>${CARDS[a*5].artistJa}の絵</td>`;
+    for (let p = 0; p < s.n; p++) rows += `<td>${s.collections[p][a] || "・"}</td>`;
+    rows += "</tr>";
+  }
+  rows += "<tr><td>手札</td>";
+  for (let p = 0; p < s.n; p++) rows += `<td>${s.handSizes[p]}</td>`;
+  rows += "</tr>";
+  $("players").innerHTML = head + rows;
+}
+
+function renderHand(s) {
+  const el = $("hand");
+  if (!s.hand.length) { el.innerHTML = '<span class="note">（なし）</span>'; return; }
+  el.innerHTML = s.hand.map(k =>
+    `<span class="pill" style="border-left:4px solid var(--${ARTIST_COLORS[CARDS[k].artist]})">${CARDS[k].name}</span>`
+  ).join(" ");
+}
+
+function renderUnseen(s) {
+  let html = "";
+  for (let a = 0; a < 5; a++) {
+    const parts = [];
+    let total = 0;
+    for (let t = 0; t < 5; t++) {
+      const c = s.unseen[a*5+t];
+      total += c;
+      if (c) parts.push(`${CARDS[a*5+t].typeJa}${c}`);
+    }
+    html += `<div><b>${CARDS[a*5].artistJa} ${total}枚</b> <span class="note">${parts.join(" ")}</span></div>`;
+  }
+  $("unseen").innerHTML = html;
+}
+
+function renderLog(s) {
+  $("log").innerHTML = s.log.slice().reverse().map(x => `<div>${x}</div>`).join("");
+}
+
+// ------------------------------------------------------------------ 入力
+
+function cardGrid(options, onPick, {multi = false, counts = null} = {}) {
+  const allowed = new Set(options);
+  const box = document.createElement("div");
+  box.className = "grid";
+  box.appendChild(el("div", "head", ""));
+  for (let t = 0; t < 5; t++) box.appendChild(el("div", "head", CARDS[t].typeJa));
+  for (let a = 0; a < 5; a++) {
+    box.appendChild(el("div", "rowlab", CARDS[a*5].artistJa));
+    for (let t = 0; t < 5; t++) {
+      const k = a*5 + t;
+      const b = document.createElement("button");
+      b.className = "card"; b.dataset.a = a; b.dataset.k = k;
+      const left = counts ? counts[k] : null;
+      b.innerHTML = `<div class="t">${CARDS[k].typeJa}</div>` +
+                    (left !== null ? `<div class="n">残${left}</div>` : "");
+      b.disabled = !allowed.has(k);
+      b.onclick = () => onPick(k, b);
+      box.appendChild(b);
+    }
+  }
+  return box;
+}
+
+function el(tag, cls, text) {
+  const d = document.createElement(tag);
+  if (cls) d.className = cls;
+  if (text !== undefined) d.textContent = text;
+  return d;
+}
+
+function renderPrompt(s) {
+  const p = s.prompt;
+  $("prompt").textContent = p.message;
+  const box = $("input");
+  box.innerHTML = "";
+
+  if (p.kind === "deal") { inputDeal(box, p, s); return; }
+  if (p.kind === "play") { inputPlay(box, p, s); return; }
+  if (p.kind === "second") { inputSecond(box, p, s); return; }
+  if (p.kind === "price") { inputPrice(box, p, s); return; }
+  if (p.kind === "result") { inputResult(box, p, s); return; }
+  if (p.kind === "score") {
+    const b = el("button", "primary", "決算する");
+    b.onclick = async () => setState(await api("/api/score", {}));
+    box.appendChild(b);
+    return;
+  }
+  if (p.kind === "game_end") {
+    const best = Math.max(...s.money);
+    const win = s.money[s.hero] === best;
+    box.innerHTML = `<div class="headline">${win ? "あなたの勝ちです" : "終了"}</div>` +
+      s.money.map((m, i) => `<div>P${i+1}${i===s.hero?"（自分）":""}: ${m}（${(m*1000).toLocaleString()}円）</div>`).join("");
+  }
+}
+
+/** 複数枚を選ぶUI。選んだカードは個別に取り消せる。 */
+function multiPicker(box, {pool, need, goLabel, onGo, onCancel}) {
+  const picked = [];
+  const remaining = pool.slice();
+  const gridHolder = el("div");
+  const chips = el("div", "row");
+  chips.style.margin = "10px 0";
+  const go = el("button", "primary", goLabel);
+
+  function redraw() {
+    const grid = cardGrid(
+      [...Array(25).keys()].filter(k => remaining[k] > 0),
+      (k) => { picked.push(k); remaining[k]--; redraw(); },
+      {counts: remaining}
+    );
+    gridHolder.innerHTML = "";
+    gridHolder.appendChild(grid);
+
+    chips.innerHTML = "";
+    chips.appendChild(el("span", "note",
+      need ? `選んだ枚数 ${picked.length} / ${need}` : `選んだ枚数 ${picked.length}`));
+    picked.forEach((k, i) => {
+      const b = el("button", null, CARDS[k].name + " ×");
+      b.title = "取り消す";
+      b.style.borderLeft = `4px solid var(--${ARTIST_COLORS[CARDS[k].artist]})`;
+      b.onclick = () => { picked.splice(i, 1); remaining[k]++; redraw(); };
+      chips.appendChild(b);
+    });
+    go.disabled = need ? picked.length !== need : picked.length === 0;
+  }
+
+  const row = el("div", "row");
+  go.onclick = () => onGo(picked);
+  row.appendChild(go);
+  if (onCancel) {
+    const c = el("button", null, "やめる");
+    c.onclick = onCancel;
+    row.appendChild(c);
+  }
+  box.append(gridHolder, chips, row);
+  redraw();
+}
+
+function inputDeal(box, p, s) {
+  multiPicker(box, {
+    pool: s.unseen,
+    need: p.count,
+    goLabel: "この手札にする",
+    onGo: async (cards) => setState(await api("/api/deal", {cards})),
+  });
+}
+
+function inputPlay(box, p, s) {
+  const counts = p.isHero ? handCounts(s) : s.unseen;
+  const grid = cardGrid(p.options, async (k) => setState(await api("/api/play", {kind: k})), {counts});
+  box.appendChild(grid);
+  markBest(grid);
+  box.appendChild(el("div", "hint",
+    p.isHero ? "自分の手札から選びます。★はAIの推奨です。" : "相手が場に出したカードを選びます。"));
+}
+
+function inputSecond(box, p, s) {
+  const counts = p.isHero ? handCounts(s) : s.unseen;
+  const row = el("div", "row");
+  const skip = el("button", "primary", "2枚目を出さない");
+  skip.onclick = async () => setState(await api("/api/second", {kind: null}));
+  row.appendChild(skip);
+  box.appendChild(row);
+  if (p.options.length) {
+    const grid = cardGrid(p.options, async (k) => setState(await api("/api/second", {kind: k})), {counts});
+    box.appendChild(grid);
+    markBest(grid);
+    box.appendChild(el("div", "hint", "同じ色の（ダブル以外の）カードだけ足せます。"));
+  } else {
+    box.appendChild(el("div", "hint", "足せるカードがありません。"));
+  }
+}
+
+function inputPrice(box, p) {
+  const row = el("div", "row");
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.min = 0; inp.max = p.max; inp.value = 0; inp.id = "priceInput";
+  const go = el("button", "primary", "この額で決定");
+  go.onclick = async () => setState(await api("/api/price", {price: Number(inp.value)}));
+  inp.onkeydown = (e) => { if (e.key === "Enter") go.click(); };
+  row.append(inp, go, el("span", "note", `0〜${p.max}`));
+  box.appendChild(row);
+  inp.focus();
+}
+
+function inputResult(box, p, s) {
+  const row = el("div", "row");
+  const inp = document.createElement("input");
+  inp.type = "number"; inp.min = 0; inp.value = p.fixedPrice ?? 0;
+  if (p.fixedPrice !== null) { inp.value = p.fixedPrice; inp.disabled = true; }
+  row.append(el("span", null, "金額"), inp);
+  box.appendChild(row);
+
+  const who = el("div", "row");
+  who.style.marginTop = "8px";
+  who.appendChild(el("span", null, "落札者"));
+  for (let i = 0; i < s.n; i++) {
+    const b = el("button", null, `P${i+1}${i === s.hero ? "（自分）" : ""}${i === p.seller ? " 競売人" : ""}`);
+    b.onclick = async () => {
+      const price = p.fixedPrice !== null ? p.fixedPrice : Number(inp.value);
+      setState(await api("/api/result", {winner: i, price}));
+    };
+    who.appendChild(b);
+  }
+  box.appendChild(who);
+  box.appendChild(el("div", "hint",
+    p.fixedPrice !== null
+      ? `差し値なので金額は ${p.fixedPrice} 固定。誰も買わなければ競売人 P${p.seller+1} を選んでください。`
+      : "誰も競らなかった場合は、競売人を 0 円で選んでください。"));
+  if (p.fixedPrice === null) inp.focus();
+}
+
+function handCounts(s) {
+  const c = new Array(25).fill(0);
+  for (const k of s.hand) c[k]++;
+  return c;
+}
+
+// ------------------------------------------------------------------ 推奨
+
+let lastAdvice = null;
+
+async function requestAdvice() {
+  const seq = ++adviceSeq;
+  const version = S && S.version;
+  lastAdvice = null;
+  const p = S && S.prompt;
+  const mine = p && (p.isHero || p.kind === "result");
+  if (!mine) { $("advice").innerHTML = '<div class="spin">相手の番です</div>'; return; }
+  $("advice").innerHTML = '<div class="spin">考えています…</div>';
+  const a = await api("/api/advice");
+  if (seq !== adviceSeq) return;              // もっと新しい要求が出ている
+  if (!a || !a.rows || a.version !== version) { $("advice").innerHTML = '<div class="spin">—</div>'; return; }
+  lastAdvice = a;
+  renderAdvice(a);
+  markBest();
+}
+
+function renderAdvice(a) {
+  const max = Math.max(...a.rows.map(r => r.win), 0.0001);
+  let html = `<div class="head-advice"><span class="headline">${a.headline}</span></div>`;
+  if (a.note) html += `<div class="note">${a.note}</div>`;
+  if (a.tie) html += `<div class="note">※ 上位の差は誤差の範囲だったので、評価関数の手を推奨しています</div>`;
+  html += '<div class="bars">';
+  a.rows.slice(0, 10).forEach((r, i) => {
+    html += `<div class="bar ${i === 0 ? "top" : ""}">
+      <div class="lab">${i === 0 ? "★ " : ""}${r.label}</div>
+      <div class="track"><div class="fill" style="width:${(r.win / max * 100).toFixed(1)}%"></div></div>
+      <div class="num">${(r.win * 100).toFixed(1)}%</div></div>`;
+  });
+  html += "</div>";
+  html += `<div class="note" style="margin-top:8px">${a.samples} 回のシミュレーション / ${a.seconds}秒</div>`;
+  $("advice").innerHTML = html;
+}
+
+function markBest(grid) {
+  if (!lastAdvice) return;
+  const opt = lastAdvice.rows[0].option;
+  if (typeof opt !== "number") return;
+  const g = grid || document.querySelector(".grid");
+  if (!g) return;
+  g.querySelectorAll(".card.best").forEach(b => b.classList.remove("best"));
+  const b = g.querySelector(`.card[data-k="${opt}"]`);
+  if (b && !b.disabled) b.classList.add("best");
+  const inp = document.getElementById("priceInput");
+  if (inp && lastAdvice.kind === "price") inp.value = opt;
+}
+
+// ------------------------------------------------------------------ 起動
+
+for (let i = 1; i <= 5; i++) {
+  const o = document.createElement("option");
+  o.value = i; o.textContent = i + "番目";
+  $("hero").appendChild(o);
+}
+function syncHeroOptions() {
+  const n = Number($("n").value);
+  [...$("hero").options].forEach((o, i) => o.hidden = i >= n);
+  if (Number($("hero").value) > n) $("hero").value = 1;
+}
+$("n").onchange = syncHeroOptions;
+syncHeroOptions();
+
+$("start").onclick = async () =>
+  setState(await api("/api/new", {n: Number($("n").value), hero: Number($("hero").value) - 1}));
+
+$("undo").onclick = async () => setState(await api("/api/undo", {}));
+
+$("editHand").onclick = () => {
+  const box = $("input");
+  $("prompt").textContent = "手札を選び直してください（いま持っている分も含めて全部）";
+  box.innerHTML = "";
+  const pool = S.unseen.slice();
+  for (const k of S.hand) pool[k]++;   // いまの手札も選び直せる
+  multiPicker(box, {
+    pool,
+    need: 0,
+    goLabel: "この手札にする",
+    onGo: async (cards) => setState(await api("/api/hand", {cards})),
+    onCancel: () => renderPrompt(S),
+  });
+};
+
+api("/api/state").then(render);
+</script>
+</body>
+</html>
