@@ -212,6 +212,32 @@ class TestArenaFairness(unittest.TestCase):
         self.assertEqual(round_to_seatings(1, 3), 6)
 
 
+class TestParamsPerRule(unittest.TestCase):
+    """ルールごとに調整値を使い分けられているか."""
+
+    def test_falls_back_when_the_any_color_file_is_missing(self):
+        import json
+        import tempfile
+        from pathlib import Path
+        from unittest import mock
+
+        from modernart import params as PM
+
+        with tempfile.TemporaryDirectory() as d:
+            same = Path(d) / "tuned.json"
+            anyc = Path(d) / "any.json"
+            Params(gamma=0.11).save(same)
+            with mock.patch.object(PM, "TUNED_PATH", same), mock.patch.object(PM, "TUNED_ANY_PATH", anyc):
+                # 別色用のファイルがまだ無いので、通常の調整値に落ちる
+                self.assertAlmostEqual(Params.load_for_rule(True).gamma, 0.11)
+                self.assertAlmostEqual(Params.load_for_rule(False).gamma, 0.11)
+
+                Params(gamma=0.99).save(anyc)
+                self.assertAlmostEqual(Params.load_for_rule(True).gamma, 0.99)
+                self.assertAlmostEqual(Params.load_for_rule(False).gamma, 0.11)
+        del json
+
+
 class TestParams(unittest.TestCase):
     def test_vector_roundtrip(self):
         p = Params(gamma=0.5, risk=0.1)
@@ -230,3 +256,63 @@ class TestParams(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class TestTuningGuards(unittest.TestCase):
+    """自己対戦の崩壊（プールごと弱くなる）を検知できるか."""
+
+    def test_strength_index_is_one_for_equal_players(self):
+        """勝ちを人数倍しているので、実力が同じなら期待値は 1.00 になる."""
+        from modernart import tune
+
+        P = Params()
+        for n in (3, 4, 5):
+            with self.subTest(n=n):
+                m, se = tune.evaluate(P, [P], [n], 120, seed=7, workers=None)
+                self.assertLess(abs(m - 1.0), 4 * se + 0.05)
+
+    def test_a_weak_challenger_scores_below_one(self):
+        from modernart import tune
+
+        strong = Params()
+        weak = Params(shade_open=0.3, shade_once=0.3, shade_sealed=0.3, shade_fixed=0.3)
+        m, _ = tune.evaluate(weak, [strong], [4], 120, seed=11, workers=None)
+        self.assertLess(m, 1.0)
+
+    def test_champion_is_checked_against_a_fixed_anchor(self):
+        """プールだけでなく、動かない基準にも勝てないと交代しないこと."""
+        import inspect
+
+        from modernart import tune
+
+        src = inspect.getsource(tune.cem)
+        self.assertIn("anchor", src)
+        self.assertIn("[anchor]", src, "固定の基準に対する再測定が無い")
+
+
+class TestOnlyAdoptWhenStronger(unittest.TestCase):
+    """強くなっていないパラメータでファイルを上書きしないこと."""
+
+    def _run(self, extra):
+        import tempfile
+        from pathlib import Path
+
+        from modernart import tune
+
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "out.json"
+            Params(gamma=0.123).save(out)  # 上書きされたら分かる目印
+            code = tune.main(
+                ["--iters", "1", "--pop", "2", "--games", "18", "--out", str(out)] + extra
+            )
+            return code, Params.load_tuned(out).gamma
+
+    def test_does_not_overwrite_without_improvement(self):
+        code, gamma = self._run([])
+        self.assertEqual(code, 1, "改善が無いのに成功扱いになっている")
+        self.assertAlmostEqual(gamma, 0.123, msg="改善が無いのに上書きされた")
+
+    def test_force_overwrites(self):
+        code, gamma = self._run(["--force"])
+        self.assertEqual(code, 0)
+        self.assertNotAlmostEqual(gamma, 0.123)

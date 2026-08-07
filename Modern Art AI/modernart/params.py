@@ -12,7 +12,11 @@ from dataclasses import asdict, dataclass, fields, replace
 from functools import lru_cache
 from pathlib import Path
 
-TUNED_PATH = Path(__file__).resolve().parent.parent / "params" / "tuned.json"
+_PARAMS_DIR = Path(__file__).resolve().parent.parent / "params"
+#: 「ダブルの2枚目は同じ色のみ」で調整した値
+TUNED_PATH = _PARAMS_DIR / "tuned.json"
+#: 「ダブルの2枚目はどの色でもよい」で調整した値。最適な打ち方が変わるので分けてある
+TUNED_ANY_PATH = _PARAMS_DIR / "tuned_any_color.json"
 
 
 @dataclass(frozen=True)
@@ -85,7 +89,9 @@ class Params:
     def with_(self, **kw) -> "Params":
         return replace(self, **kw)
 
-    def save(self, path: Path = TUNED_PATH) -> None:
+    def save(self, path: Path | None = None) -> None:
+        # 既定値を引数に書くと定義時のパスで固定されてしまうので、呼ばれた時に解決する
+        path = path or TUNED_PATH
         # 書き込み中に落ちても壊れたファイルが残らないよう、書いてから差し替える
         path.parent.mkdir(parents=True, exist_ok=True)
         tmp = path.with_suffix(path.suffix + ".tmp")
@@ -93,16 +99,25 @@ class Params:
         tmp.replace(path)
 
     @classmethod
-    def load_tuned(cls, path: Path = TUNED_PATH) -> "Params":
+    def load_tuned(cls, path: Path | None = None) -> "Params":
         """調整済みパラメータがあれば読む. なければ既定値.
 
         自己対戦では1ゲームあたり何度も呼ばれるので、更新時刻つきでキャッシュする。
         """
+        path = path or TUNED_PATH
         try:
             stamp = path.stat().st_mtime_ns
         except OSError:
             return cls()
         return _load_cached(str(path), stamp)
+
+
+    @classmethod
+    def load_for_rule(cls, double_any_artist: bool) -> "Params":
+        """遊ぶルールに合った調整値を読む. 無ければ既定のものにする."""
+        if double_any_artist and TUNED_ANY_PATH.exists():
+            return cls.load_tuned(TUNED_ANY_PATH)
+        return cls.load_tuned()
 
 
 @lru_cache(maxsize=8)

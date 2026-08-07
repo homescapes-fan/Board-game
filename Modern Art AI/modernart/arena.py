@@ -69,6 +69,7 @@ def _play_one(job):
     from . import rules
 
     game_id, specs, base_seed, params, verify, opts = job
+    any_colour = bool(opts.get("double_any_artist"))
     n = len(specs)
     perm = SEATINGS[n][game_id % len(SEATINGS[n])]  # perm[座席] = specs のインデックス
     seats = [specs[perm[i]] for i in range(n)]
@@ -77,7 +78,7 @@ def _play_one(job):
     ]
     rng = random.Random(base_seed + game_id)
 
-    s = rules.new_game(n, rng)
+    s = rules.new_game(n, rng, double_any_artist=any_colour)
     if verify:
         while s.phase != PHASE_GAME_END:
             if s.phase == PHASE_AUCTION:
@@ -159,6 +160,10 @@ def main(argv=None):
     ap.add_argument("--seed", type=int, default=12345)
     ap.add_argument("-j", "--jobs", type=int, default=0, help="0 で自動")
     ap.add_argument("--verify", action="store_true", help="毎局 収支の不変条件を検査する")
+    ap.add_argument(
+        "--double-any-color", action="store_true",
+        help="ダブルの2枚目に別の色も出せるルールで対戦する",
+    )
     args = ap.parse_args(argv)
 
     specs = [x.strip() for x in args.agents.split(",") if x.strip()]
@@ -166,7 +171,8 @@ def main(argv=None):
         ap.error("エージェントは3〜5個指定してください")
 
     jobs = args.jobs or min(8, __import__("os").cpu_count() or 1)
-    wins, money, played = run(specs, args.games, args.seed, jobs, verify=args.verify)
+    opts = {"double_any_artist": args.double_any_color}
+    wins, money, played = run(specs, args.games, args.seed, jobs, verify=args.verify, opts=opts)
     report(specs, wins, money, played)
 
 

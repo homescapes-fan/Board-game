@@ -85,7 +85,7 @@ class Session:
             self.tracker = Tracker(n, hero, random.Random(), double_any_artist)
             self.advisor = Advisor(
                 self.tracker,
-                self.params,
+                self.params or Params.load_for_rule(double_any_artist),
                 budget=self.budget,
                 jobs=self.jobs,
                 pool=self.pool,
@@ -428,7 +428,7 @@ def main(argv=None) -> int:
         from multiprocessing import Pool
 
         pool = Pool(jobs)
-    session = Session(Params.load_tuned(), args.time, jobs, pool, not args.no_affinity)
+    session = Session(None, args.time, jobs, pool, not args.no_affinity)  # ルールを聞いてから選ぶ
     try:
         serve(args.host, args.port, session, open_browser=args.open)
     finally:

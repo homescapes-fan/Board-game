@@ -160,7 +160,8 @@ cd ~/projects/art/"Modern Art AI"
 ```bash
 python3 -m unittest discover -s tests -t . -q          # テスト
 python3 -m modernart.arena --agents heuristic,heuristic,greedy,random -n 600
-python3 -m modernart.tune --iters 14 --pop 14 --games 480   # params/tuned.json を更新
+python3 -m modernart.tune --iters 12 --pop 14 --games 540   # パラメータを調整
+python3 -m modernart.tune --double-any-color               # 別色ダブルのルール用
 ```
 
 エージェント名は `random` / `greedy` / `heuristic` / `pimc`。`:` で細かく指定できる。
@@ -211,4 +212,11 @@ python3 -m modernart.tune --iters 14 --pop 14 --games 480   # params/tuned.json 
 - **交代は独立した再測定で有意差が出たときだけ。** 世代内の最良は定義上「上振れた候補」
   なので、そのまま採用すると毎回ノイズを掴む。
 - **`pimc` の探索は生き残った候補に同じ回数を割り当てる。** 割り当てが不揃いだと、
-  サンプルの少ない候補がまぐれで1位になる。
+  サンプルの少ない候補がまぐれで1位になる。候補の優劣は「同じ配牌の上で測った差」で
+  判定する。平均どうしを比べると誤差の見積りが大きくなりすぎ、探索が何も上書きできない。
+- **`tune` は動かない基準（出発点のパラメータ）にも勝つことを要求する。** 歴代プール
+  だけで判定すると、*プールごと弱い方へ流れても*「プールには勝っている」ので改善に
+  見えてしまう。実際にこれで強さ指数 1.155 と報告された値が、実測では勝率 2% だった。
+- **`tune` は強くなったときだけファイルを書き出す。** 改善が無ければ既存の値を守る
+  （`--force` で上書きできるが通常は使わない）。
+- **パラメータは 3人・4人・5人を混ぜて調整する。** 4人だけで回すと4人にしか効かない。

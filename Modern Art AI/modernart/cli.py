@@ -476,7 +476,7 @@ def main(argv=None) -> int:
         t = box["t"]
         advisor = Advisor(
             t,
-            Params.load_tuned(),
+            Params.load_for_rule(t.state.double_any_artist),
             budget=args.time,
             jobs=jobs,
             rollout=args.rollout,

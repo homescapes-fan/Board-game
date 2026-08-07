@@ -63,7 +63,7 @@ class Tracker:
         self._undo: list[tuple] = []
         #: 配札済みの最後のラウンド番号。ラウンド2・3の追加配札を促すのに使う
         self.dealt_round = -1
-        self._ref = HeuristicAgent(Params.load_tuned(), self.rng, seed=0)
+        self._ref = HeuristicAgent(Params.load_for_rule(double_any_artist), self.rng, seed=0)
 
     # ------------------------------------------------------------------ undo
 
