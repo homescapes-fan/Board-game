@@ -390,13 +390,18 @@ class Handler(BaseHTTPRequestHandler):
         raise ValueError(f"未知のAPI: {path}")
 
 
-def serve(host: str, port: int, session: Session) -> None:
+def serve(host: str, port: int, session: Session, open_browser: bool = False) -> None:
     handler = partial(Handler, session)
-    httpd = ThreadingHTTPServer((host, port), handler)
+    httpd = ThreadingHTTPServer((host, port), handler)  # ここで待ち受けが始まる
     url = f"http://localhost:{port}/"
-    print(f"\nモダンアート AI アドバイザー")
+    print("\nモダンアート AI アドバイザー")
     print(f"  ブラウザで {url} を開いてください")
-    print(f"  終了は Ctrl+C\n")
+    print("  終了は Ctrl+C\n")
+    if open_browser:
+        # 待ち受けが始まってから開く。先に開くと「接続が拒否されました」になる
+        import webbrowser
+
+        threading.Timer(0.4, lambda: webbrowser.open(url)).start()
     try:
         httpd.serve_forever()
     except KeyboardInterrupt:
@@ -413,6 +418,7 @@ def main(argv=None) -> int:
     ap.add_argument("-j", "--jobs", type=int, default=0, help="並列数（0で自動）")
     ap.add_argument("--rollout", choices=("heuristic", "greedy"), default="heuristic")
     ap.add_argument("--no-affinity", action="store_true")
+    ap.add_argument("--open", action="store_true", help="起動後にブラウザを自動で開く")
     args = ap.parse_args(argv)
 
     jobs = args.jobs or default_jobs()
@@ -423,7 +429,7 @@ def main(argv=None) -> int:
         pool = Pool(jobs)
     session = Session(Params.load_tuned(), args.time, jobs, pool, not args.no_affinity)
     try:
-        serve(args.host, args.port, session)
+        serve(args.host, args.port, session, open_browser=args.open)
     finally:
         if pool is not None:
             pool.terminate()

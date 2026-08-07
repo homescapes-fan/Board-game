@@ -1,0 +1,17 @@
+# 改行コードの扱いを固定する。
+# Windows(CRLF) と Linux(LF) で同じファイルを共有するため、
+# 「壊れると困るファイル」だけは明示的に指定しておく。
+
+# 既定はGitに任せる（リポジトリ側はLFで保存される）
+* text=auto
+
+# Windowsのバッチファイルは CRLF でないと行を読み違えて動かない
+*.bat text eol=crlf
+
+# シェルスクリプトは LF でないと Linux 側で動かない
+*.sh text eol=lf
+
+# 中身をそのまま保つ（変換させない）
+*.png binary
+*.jpg binary
+*.pkl binary
