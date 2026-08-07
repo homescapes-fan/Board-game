@@ -199,13 +199,19 @@ class HeuristicAgent:
             self._depth -= 1
 
     def _cheap_second(self, s: GameState, p: int, options: list[int]) -> int | None:
-        """深い所で呼ばれたとき用の簡易版: 売上が見込めるなら出す."""
+        """深い所で呼ばれたとき用の簡易版: 売上が一番見込める1枚を足す.
+
+        卓のルールによっては2枚目が別の色になりうるので、1枚目と2枚目の
+        価値を別々に足す。競り方式によって取れる額も変わるので、そこも見る。
+        """
         vals = self.values(s)
-        a = artist_of(options[0])
-        revenue = 2.0 * vals[a] * self.P.shade_open
-        if revenue < self.P.second_min_revenue:
-            return None
-        return max(options, key=lambda k: self.P.shade(type_of(k)))
+        first = vals[artist_of(s.pending_double)]
+        best_k, best_v = None, self.P.second_min_revenue
+        for k in options:
+            revenue = (first + vals[artist_of(k)]) * self.P.shade(type_of(k))
+            if revenue > best_v:
+                best_v, best_k = revenue, k
+        return best_k
 
 
 class GreedyAgent(HeuristicAgent):

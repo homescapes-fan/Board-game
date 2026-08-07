@@ -116,12 +116,50 @@ class TestDoubleAuction(unittest.TestCase):
         with self.assertRaises(IllegalAction):
             s.apply_second(K(C.PINK, C.DOUBLE))
 
-    def test_second_card_must_match_artist(self):
+    def test_second_card_must_match_artist_by_default(self):
         s = blank()
         give(s, 0, K(C.PINK, C.DOUBLE), K(C.BLUE, C.OPEN))
         give(s, 1, K(C.GREEN, C.OPEN))
         s.apply_play(K(C.PINK, C.DOUBLE))
         self.assertEqual(s.legal_seconds(0), [])
+
+    def test_second_card_may_be_any_artist_when_enabled(self):
+        """卓によっては2枚目が別の色でもよい."""
+        s = GameState(4, double_any_artist=True)
+        give(s, 0, K(C.PINK, C.DOUBLE), K(C.BLUE, C.OPEN), K(C.PINK, C.DOUBLE))
+        give(s, 1, K(C.GREEN, C.OPEN))
+        s.apply_play(K(C.PINK, C.DOUBLE))
+        self.assertEqual(s.legal_seconds(0), [K(C.BLUE, C.OPEN)])  # ダブルは除外される
+
+    def test_mixed_colour_double_counts_both_artists(self):
+        s = GameState(4, double_any_artist=True)
+        give(s, 0, K(C.PINK, C.DOUBLE), K(C.BLUE, C.OPEN))
+        give(s, 1, K(C.GREEN, C.OPEN))
+        s.apply_play(K(C.PINK, C.DOUBLE))
+        s.apply_second(K(C.BLUE, C.OPEN))
+        self.assertEqual(s.round_counts[C.PINK], 1)
+        self.assertEqual(s.round_counts[C.BLUE], 1)
+        self.assertEqual(s.lot_type, C.OPEN)  # 方式は2枚目で決まる
+
+        s.apply_auction_result(winner=2, price=20)
+        self.assertEqual(s.collections[2][C.PINK], 1)
+        self.assertEqual(s.collections[2][C.BLUE], 1)  # 2色を1枚ずつ得る
+
+    def test_mixed_colour_double_can_end_the_round_on_the_second_colour(self):
+        s = GameState(4, double_any_artist=True)
+        s.round_counts[C.BLUE] = 4
+        give(s, 0, K(C.PINK, C.DOUBLE), K(C.BLUE, C.OPEN))
+        give(s, 1, K(C.GREEN, C.OPEN))
+        s.apply_play(K(C.PINK, C.DOUBLE))
+        s.apply_second(K(C.BLUE, C.OPEN))
+        self.assertEqual(s.phase, PHASE_ROUND_END)
+        self.assertEqual(s.round_counts[C.BLUE], 5)
+        self.assertTrue(all(c[C.PINK] == 0 and c[C.BLUE] == 0 for c in s.collections))
+
+    def test_rule_flag_survives_clone(self):
+        s = GameState(4, double_any_artist=True)
+        self.assertTrue(s.clone().double_any_artist)
+        self.assertFalse(GameState(4).clone().double_any_artist)
 
     def test_other_player_adds_second_and_becomes_seller(self):
         s = blank()

@@ -288,7 +288,13 @@ def setup(con: Console) -> Tracker:
         f"あなたは何番目スタート？ (1〜{n}、1がスタートプレイヤー)",
         lambda r: _in_range(int(r), 1, n, f"1〜{n} で指定してください") - 1,
     )
-    t = Tracker(n, hero, random.Random())
+    any_colour = con.ask(
+        "ダブルの2枚目に別の色も出せる卓ですか？ (y/n)",
+        lambda r: r.strip().lower() in ("y", "yes", "はい", "1"),
+        default=True,
+        default_label="Enterで はい",
+    )
+    t = Tracker(n, hero, random.Random(), double_any_artist=any_colour)
     con.box["t"] = t
     count = C.DEAL_TABLE[n][0]
     con.ask(
@@ -340,7 +346,7 @@ def step_second(con: Console, t: Tracker, advisor: Advisor) -> None:
     if p == t.hero:
         print(f"\n── {first} のダブル：あなたが2枚目を出せます ──")
         if not legal:
-            print("  同じ色の（ダブル以外の）カードが手札にないので、出せません")
+            print("  2枚目に出せるカードが手札にないので、出せません")
             t.second(None)
             return
         adv = show_advice(advisor)

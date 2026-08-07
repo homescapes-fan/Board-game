@@ -31,10 +31,10 @@ def full_deck_list() -> list[int]:
     return out
 
 
-def new_game(n: int, rng: random.Random) -> GameState:
+def new_game(n: int, rng: random.Random, double_any_artist: bool = False) -> GameState:
     if n not in DEAL_TABLE:
         raise ValueError("人数は3〜5です")
-    s = GameState(n)
+    s = GameState(n, double_any_artist)
     s.deck = full_deck_list()
     rng.shuffle(s.deck)
     deal(s)

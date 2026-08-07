@@ -44,7 +44,13 @@ class TrackerError(ValueError):
 class Tracker:
     """実戦の進行を記録する."""
 
-    def __init__(self, n: int, hero: int, rng: random.Random | None = None):
+    def __init__(
+        self,
+        n: int,
+        hero: int,
+        rng: random.Random | None = None,
+        double_any_artist: bool = False,
+    ):
         if not 3 <= n <= 5:
             raise TrackerError("人数は3〜5です")
         if not 0 <= hero < n:
@@ -52,7 +58,7 @@ class Tracker:
         self.n = n
         self.hero = hero
         self.rng = rng or random.Random()
-        self.state = GameState(n)
+        self.state = GameState(n, double_any_artist)
         self.affinity = Affinity(n)
         self._undo: list[tuple] = []
         #: 配札済みの最後のラウンド番号。ラウンド2・3の追加配札を促すのに使う

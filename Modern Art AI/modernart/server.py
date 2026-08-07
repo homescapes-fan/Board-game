@@ -80,9 +80,9 @@ class Session:
 
     # ------------------------------------------------------------ 盤面の更新
 
-    def start(self, n: int, hero: int) -> None:
+    def start(self, n: int, hero: int, double_any_artist: bool = False) -> None:
         with self.lock:
-            self.tracker = Tracker(n, hero, random.Random())
+            self.tracker = Tracker(n, hero, random.Random(), double_any_artist)
             self.advisor = Advisor(
                 self.tracker,
                 self.params,
@@ -92,7 +92,8 @@ class Session:
                 use_affinity=self.use_affinity,
             )
             self.version += 1
-            self.log = [f"{n}人でゲーム開始。あなたは P{hero + 1}"]
+            rule = "ダブルの2枚目はどの色でも可" if double_any_artist else "ダブルの2枚目は同じ色のみ"
+            self.log = [f"{n}人でゲーム開始。あなたは P{hero + 1}（{rule}）"]
 
     def require(self) -> Tracker:
         if self.tracker is None:
@@ -174,6 +175,7 @@ class Session:
                 "lotPrice": s.lot_price,
                 "secondOfferer": s.second_offerer,
                 "pendingDouble": s.pending_double,
+                "doubleAnyArtist": s.double_any_artist,
                 "log": list(self.log),
                 "prompt": self._prompt(t),
             }
@@ -220,10 +222,9 @@ class Session:
             if p == hero:
                 options = s.legal_seconds(hero)
             else:
+                pool = range(C.N_KINDS) if s.double_any_artist else C.kinds_of_artist(a)
                 options = [
-                    k
-                    for k in C.kinds_of_artist(a)
-                    if C.type_of(k) != C.DOUBLE and t.remaining_copies(k) > 0
+                    k for k in pool if C.type_of(k) != C.DOUBLE and t.remaining_copies(k) > 0
                 ]
             return {
                 "kind": "second",
@@ -322,7 +323,7 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self, path: str, d: dict) -> dict:
         S = self.session
         if path == "/api/new":
-            S.start(int(d["n"]), int(d["hero"]))
+            S.start(int(d["n"]), int(d["hero"]), bool(d.get("doubleAnyArtist")))
             return S.snapshot()
 
         if path == "/api/deal":

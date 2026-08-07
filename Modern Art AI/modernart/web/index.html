@@ -105,6 +105,13 @@ tr.me td { background: rgba(255,180,84,.08); }
       <button class="primary" id="start">開始</button>
     </div>
     <div class="hint">1番目がスタートプレイヤーです。</div>
+    <div class="row" style="margin-top:12px">
+      <label><input type="checkbox" id="dblAny" checked>
+        ダブルの2枚目に <b>別の色</b> も出せる</label>
+    </div>
+    <div class="hint">
+      卓によって扱いが違うルールです。同じ色しか出せない卓ならチェックを外してください。
+    </div>
   </div>
 
   <div id="game" style="display:none">
@@ -378,7 +385,9 @@ function inputSecond(box, p, s) {
     const grid = cardGrid(p.options, async (k) => setState(await api("/api/second", {kind: k})), {counts});
     box.appendChild(grid);
     markBest(grid);
-    box.appendChild(el("div", "hint", "同じ色の（ダブル以外の）カードだけ足せます。"));
+    box.appendChild(el("div", "hint", s.doubleAnyArtist
+      ? "ダブル以外なら、どの色でも足せます。"
+      : "同じ色の（ダブル以外の）カードだけ足せます。"));
   } else {
     box.appendChild(el("div", "hint", "足せるカードがありません。"));
   }
@@ -495,7 +504,11 @@ $("n").onchange = syncHeroOptions;
 syncHeroOptions();
 
 $("start").onclick = async () =>
-  setState(await api("/api/new", {n: Number($("n").value), hero: Number($("hero").value) - 1}));
+  setState(await api("/api/new", {
+    n: Number($("n").value),
+    hero: Number($("hero").value) - 1,
+    doubleAnyArtist: $("dblAny").checked,
+  }));
 
 $("undo").onclick = async () => setState(await api("/api/undo", {}));
 

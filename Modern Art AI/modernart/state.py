@@ -43,6 +43,7 @@ class IllegalAction(ValueError):
 class GameState:
     __slots__ = (
         "n",
+        "double_any_artist",
         "round_idx",
         "phase",
         "turn",
@@ -66,8 +67,10 @@ class GameState:
         "lot_declined",
     )
 
-    def __init__(self, n: int):
+    def __init__(self, n: int, double_any_artist: bool = False):
         self.n = n
+        #: ダブルの2枚目に別の色を出せるルールで遊ぶか（卓によって異なる）
+        self.double_any_artist = double_any_artist
         self.round_idx = 0
         self.phase = PHASE_PLAY
         self.turn = 0
@@ -108,6 +111,7 @@ class GameState:
     def clone(self) -> "GameState":
         s = GameState.__new__(GameState)
         s.n = self.n
+        s.double_any_artist = self.double_any_artist
         s.round_idx = self.round_idx
         s.phase = self.phase
         s.turn = self.turn
@@ -177,11 +181,17 @@ class GameState:
         return [k for k in range(N_KINDS) if h[k]]
 
     def legal_seconds(self, p: int) -> list[int]:
-        """ダブルの2枚目として出せるカード種別. 同じ画家かつダブル以外."""
+        """ダブルの2枚目として出せるカード種別.
+
+        ダブルカードは2枚目にできない。色の制限は卓のルール次第で、
+        ``double_any_artist`` が True なら別の色も出せる。
+        """
         if self.pending_double < 0:
             return []
-        a = artist_of(self.pending_double)
         h = self.hands[p]
+        if self.double_any_artist:
+            return [k for k in range(N_KINDS) if h[k] and type_of(k) != DOUBLE]
+        a = artist_of(self.pending_double)
         return [k for k in kinds_of_artist(a) if h[k] and type_of(k) != DOUBLE]
 
     # ------------------------------------------------------------ transition
