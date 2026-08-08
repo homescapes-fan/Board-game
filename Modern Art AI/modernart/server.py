@@ -81,7 +81,13 @@ class Session:
 
     # ------------------------------------------------------------ 盤面の更新
 
-    def start(self, n: int, hero: int, double_any_artist: bool = False) -> None:
+    def start(
+        self,
+        n: int,
+        hero: int,
+        double_any_artist: bool = False,
+        names: list[str] | None = None,
+    ) -> None:
         with self.lock:
             self.tracker = Tracker(n, hero, random.Random(), double_any_artist)
             self.advisor = Advisor(
@@ -94,6 +100,11 @@ class Session:
             )
             self.version += 1
             self.names = [f"P{i + 1}" for i in range(n)]
+            for i, raw in enumerate(names or []):
+                if i < n:
+                    clean = " ".join(str(raw).split())[:12]
+                    if clean:
+                        self.names[i] = clean
             rule = "ダブルの2枚目はどの色でも可" if double_any_artist else "ダブルの2枚目は同じ色のみ"
             self.log = [f"{n}人でゲーム開始。あなたは {self.names[hero]}（{rule}）"]
 
@@ -339,7 +350,12 @@ class Handler(BaseHTTPRequestHandler):
     def _dispatch(self, path: str, d: dict) -> dict:
         S = self.session
         if path == "/api/new":
-            S.start(int(d["n"]), int(d["hero"]), bool(d.get("doubleAnyArtist")))
+            S.start(
+                int(d["n"]),
+                int(d["hero"]),
+                bool(d.get("doubleAnyArtist")),
+                d.get("names"),
+            )
             return S.snapshot()
 
         if path == "/api/deal":

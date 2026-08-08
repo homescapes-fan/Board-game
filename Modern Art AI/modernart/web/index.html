@@ -3,17 +3,21 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>モダンアート AI アドバイザー</title>
+<title>MODERN Art AI アドバイザー</title>
 <style>
 :root {
   --bg: #14161a; --panel: #1c1f26; --line: #2c313b; --ink: #e8eaed; --dim: #9aa3b2;
   --accent: #ffb454; --bad: #e5715f;
+  /* ボタンは背景と文字を別に持つ。明るいテーマだと accent が濃い茶になり、
+     黒文字だとコントラストが足りなくなるため */
+  --btn: #ffb454; --btn-ink: #16181d;
   --c0: #e8c53f; --c1: #6fbf73; --c2: #e88ab0; --c3: #6aa8e8; --c4: #d8b48c;
   --on0: #3a3210; --on1: #102a14; --on2: #341524; --on3: #0f2338; --on4: #2f2314;
 }
 @media (prefers-color-scheme: light) {
   :root { --bg:#f6f7f9; --panel:#fff; --line:#dfe3e9; --ink:#1b1e23; --dim:#5d6674; --accent:#b8730f;
-          --on0:#fdf3cf; --on1:#dff3e2; --on2:#fce0ec; --on3:#dbeafb; --on4:#f6ead9; }
+          --on0:#fdf3cf; --on1:#dff3e2; --on2:#fce0ec; --on3:#dbeafb; --on4:#f6ead9;
+          --btn:#a85f00; --btn-ink:#ffffff; }
 }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--bg); color:var(--ink);
@@ -39,7 +43,10 @@ button { font:inherit; color:inherit; cursor:pointer; border-radius:8px;
          border:1px solid var(--line); background:var(--panel); padding:7px 12px; }
 button:hover:not(:disabled) { border-color:var(--accent); }
 button:disabled { opacity:.35; cursor:not-allowed; }
-button.primary { background:var(--accent); color:#16181d; border-color:transparent; font-weight:700; }
+button.primary { background:var(--btn); color:var(--btn-ink); border-color:transparent;
+                 font-weight:700; padding:9px 18px; }
+#start { padding:13px 50px; font-size:23px; }
+button.primary:hover:not(:disabled) { filter:brightness(1.08); border-color:transparent; }
 button.danger:hover { border-color:var(--bad); color:var(--bad); }
 input[type=number], input[type=text], select {
   font:inherit; color:inherit; background:var(--bg); border:1px solid var(--line);
@@ -126,6 +133,30 @@ td.zero { color:var(--dim); opacity:.5; }
 .names { display:flex; gap:8px; flex-wrap:wrap; }
 .names label { font-size:12px; color:var(--dim); display:flex; flex-direction:column; gap:3px; }
 .names input { width:120px; }
+
+/* 開始画面 */
+.hero { text-align:center; padding:10px 0 22px; border-bottom:1px solid var(--line); margin-bottom:20px; }
+.hero .logo { width:min(320px,82%); height:auto; color:var(--ink); display:block; margin:0 auto 14px; }
+.hero h1 { margin:0 0 6px; line-height:1.15; }
+.brand { display:block; font-size:clamp(32px,7vw,52px); font-weight:900;
+         letter-spacing:.06em; }
+.brand-sub { display:block; font-size:clamp(28px,3.4vw,28px); font-weight:700;
+             letter-spacing:.22em; color:var(--dim); margin-top:8px; }
+.lead { color:var(--ink); font-size:14px; margin:14px auto 0; max-width:640px; }
+
+/* ページ下部のフッター */
+.foot { border-top:1px solid var(--line); margin-top:22px; padding-top:14px;
+        text-align:center; color:var(--dim); font-size:12px; line-height:1.8; }
+.foot .copy { letter-spacing:.04em; }
+.setrow { display:flex; gap:16px; flex-wrap:wrap; align-items:center; }
+
+/* 競り中のカード表示 */
+.lot { display:flex; gap:10px; align-items:center; flex-wrap:wrap;
+       background:var(--bg); border:1px solid var(--line); border-radius:10px;
+       padding:10px 12px; margin-bottom:12px; }
+.lotcard { border-radius:8px; padding:8px 14px; font-size:17px; font-weight:800; }
+.lotmeta { font-size:13px; color:var(--dim); line-height:1.4; }
+.lotmeta b { color:var(--ink); }
 </style>
 </head>
 <body>
@@ -142,22 +173,70 @@ td.zero { color:var(--dim); opacity:.5; }
 
   <!-- 設定 -->
   <div class="panel" id="setup">
-    <div class="title" style="font-size:18px;font-weight:800;color:var(--ink);margin-bottom:4px">
-      モダンアート AI アドバイザー</div>
-    <div class="hint" style="margin:0 0 14px">金額はすべて千円単位（24 = 24,000円）</div>
-    <div class="row">
+    <div class="hero">
+      <!-- 権利関係を避けるため、箱やロゴの画像は使わずオリジナルの絵を描いている -->
+      <svg class="logo" viewBox="0 0 260 120" role="img" aria-label="5枚の絵が並んだイラスト">
+        <g stroke="currentColor" stroke-opacity=".25" stroke-width="2">
+          <g transform="rotate(-6 40 70)">
+            <rect x="14" y="34" width="46" height="60" rx="3" fill="var(--c0)"/>
+            <rect x="14" y="34" width="46" height="60" rx="3" fill="none"/>
+          </g>
+          <g transform="rotate(3 88 62)">
+            <rect x="62" y="24" width="46" height="64" rx="3" fill="var(--c1)"/>
+            <rect x="62" y="24" width="46" height="64" rx="3" fill="none"/>
+          </g>
+          <g>
+            <rect x="110" y="16" width="48" height="72" rx="3" fill="var(--c2)"/>
+            <rect x="110" y="16" width="48" height="72" rx="3" fill="none"/>
+          </g>
+          <g transform="rotate(-3 184 62)">
+            <rect x="160" y="24" width="46" height="64" rx="3" fill="var(--c3)"/>
+            <rect x="160" y="24" width="46" height="64" rx="3" fill="none"/>
+          </g>
+          <g transform="rotate(6 222 70)">
+            <rect x="208" y="34" width="46" height="60" rx="3" fill="var(--c4)"/>
+            <rect x="208" y="34" width="46" height="60" rx="3" fill="none"/>
+          </g>
+        </g>
+        <rect x="8" y="98" width="244" height="4" rx="2" fill="currentColor" opacity=".18"/>
+      </svg>
+      <h1>
+        <span class="brand">MODERN Art</span>
+        <span class="brand-sub">AI アドバイザー</span>
+      </h1>
+      <p class="lead">
+        ボードゲーム『MODERN Art』(Reiner Knizia) に特化した対話型 AI です。<br>
+        場に出たカードと落札額を入力していくと、あなたの番に「どのカードを出すか」
+        「いくらまで競るか」を、その場で数千回シミュレーションして提案します。
+      </p>
+    </div>
+
+    <div class="setrow">
       <label>人数 <select id="n"><option>3</option><option selected>4</option><option>5</option></select></label>
       <label>自分は何番目スタート <select id="hero"></select></label>
     </div>
     <div class="hint">1番目がスタートプレイヤーです。</div>
-    <div style="margin-top:16px">
+
+    <div style="margin-top:18px">
+      <div class="hint" style="margin-bottom:6px">プレイヤー名（空欄のままでも構いません）</div>
+      <div class="names" id="setupNames"></div>
+    </div>
+
+    <div style="margin-top:18px">
       <label class="toggle">
-        <input type="checkbox" id="dblAny" checked><span class="track"></span>
+        <input type="checkbox" id="dblAny"><span class="track"></span>
         <span>ダブルの2枚目に <b>別の色</b> も出せる</span>
       </label>
       <div class="hint">卓によって扱いが違うルールです。同じ色しか出せない卓ならオフに。</div>
     </div>
-    <div class="row" style="margin-top:18px"><button class="primary" id="start">開始</button></div>
+    <div class="row" style="margin-top:22px; justify-content:center":><button class="primary" id="start">開始</button></div>
+
+    <div class="foot">
+      本ツールは非公式のファンツールです。ゲーム本体とは無関係で、権利者とは一切関係ありません。<br>
+      『MODERN Art』は Reiner Knizia 氏の作品です。<br>
+      計算はすべてこのPC内で行われ、外部には何も送信されません。
+      <div class="copy" style="margin-top:8px">© 2026 homescapes-fan</div>
+    </div>
   </div>
 
   <div id="game" style="display:none">
@@ -332,6 +411,23 @@ function cardGrid(options, onPick, counts) {
   return box;
 }
 
+/** いま何が競りに出ているかを大きく示す。金額だけ出されても分からないため。 */
+function lotBanner(s, {seller = null} = {}) {
+  if (!s.lot || !s.lot.length) return null;
+  const box = el("div", "lot");
+  s.lot.forEach((k, i) => {
+    if (i) box.appendChild(el("span", "note", "＋"));
+    const c = el("span", `lotcard a${CARDS[k].artist}`, CARDS[k].name);
+    box.appendChild(c);
+  });
+  const meta = el("div", "lotmeta");
+  const type = s.lotType >= 0 ? CARDS[s.lotType].typeName : "";
+  const who = seller === null ? "" : `<br>競売人 <b>${label(seller)}</b>`;
+  meta.innerHTML = `競り方 <b>${type}</b>${who}`;
+  box.appendChild(meta);
+  return box;
+}
+
 function renderPrompt(s) {
   const p = s.prompt;
   $("prompt").textContent = p.message;
@@ -416,6 +512,14 @@ function inputPlay(box, p, s) {
 }
 
 function inputSecond(box, p, s) {
+  if (s.pendingDouble >= 0) {
+    const first = el("div", "lot");
+    first.appendChild(el("span", `lotcard a${CARDS[s.pendingDouble].artist}`, CARDS[s.pendingDouble].name));
+    const meta = el("div", "lotmeta");
+    meta.innerHTML = "この1枚目に、2枚目を足すかどうか";
+    first.appendChild(meta);
+    box.appendChild(first);
+  }
   const skip = el("button", "primary", "2枚目を出さない");
   skip.onclick = async () => setState(await api("/api/second", {kind:null}));
   const row = el("div", "row"); row.appendChild(skip);
@@ -440,7 +544,9 @@ function amountField(placeholder, max) {
   return inp;
 }
 
-function inputPrice(box, p) {
+function inputPrice(box, p, s) {
+  const banner = lotBanner(s, {seller: p.player});
+  if (banner) box.appendChild(banner);
   const inp = amountField("金額を入力してください", p.max);
   inp.id = "priceInput";
   const go = el("button", "primary", "この額で決定");
@@ -455,6 +561,8 @@ function inputPrice(box, p) {
 }
 
 function inputResult(box, p, s) {
+  const banner = lotBanner(s, {seller: p.seller});
+  if (banner) box.appendChild(banner);
   const fixed = p.fixedPrice !== null && p.fixedPrice !== undefined;
   const inp = amountField("金額を入力してください");
   if (fixed) { inp.value = p.fixedPrice; inp.disabled = true; }
@@ -610,18 +718,33 @@ for (let i = 1; i <= 5; i++) {
   o.value = i; o.textContent = i + "番目";
   $("hero").appendChild(o);
 }
-function syncHeroOptions() {
+function syncSetup() {
   const n = Number($("n").value);
   [...$("hero").options].forEach((o, i) => o.hidden = i >= n);
   if (Number($("hero").value) > n) $("hero").value = 1;
+
+  const box = $("setupNames");
+  const kept = [...box.querySelectorAll("input")].map(i => i.value);
+  box.innerHTML = "";
+  const hero = Number($("hero").value) - 1;
+  for (let i = 0; i < n; i++) {
+    const wrap = el("label", null, `${i + 1}番目` + (i === hero ? "（自分）" : ""));
+    const inp = document.createElement("input");
+    inp.type = "text"; inp.maxLength = 12; inp.placeholder = `P${i + 1}`;
+    inp.value = kept[i] || "";
+    wrap.appendChild(inp);
+    box.appendChild(wrap);
+  }
 }
-$("n").onchange = syncHeroOptions;
-syncHeroOptions();
+$("n").onchange = syncSetup;
+$("hero").onchange = syncSetup;
+syncSetup();
 
 $("start").onclick = async () => setState(await api("/api/new", {
   n: Number($("n").value),
   hero: Number($("hero").value) - 1,
   doubleAnyArtist: $("dblAny").checked,
+  names: [...$("setupNames").querySelectorAll("input")].map(i => i.value),
 }));
 
 api("/api/state").then(render);

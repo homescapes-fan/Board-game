@@ -291,8 +291,8 @@ def setup(con: Console) -> Tracker:
     any_colour = con.ask(
         "ダブルの2枚目に別の色も出せる卓ですか？ (y/n)",
         lambda r: r.strip().lower() in ("y", "yes", "はい", "1"),
-        default=True,
-        default_label="Enterで はい",
+        default=False,
+        default_label="Enterで いいえ",
     )
     t = Tracker(n, hero, random.Random(), double_any_artist=any_colour)
     con.box["t"] = t
