@@ -75,6 +75,7 @@ class Session:
         self.tracker: Tracker | None = None
         self.advisor: Advisor | None = None
         self.version = 0
+        self.names: list[str] = []
         self.log: list[str] = []
         self._advice_lock = threading.Lock()
 
@@ -92,8 +93,9 @@ class Session:
                 use_affinity=self.use_affinity,
             )
             self.version += 1
+            self.names = [f"P{i + 1}" for i in range(n)]
             rule = "ダブルの2枚目はどの色でも可" if double_any_artist else "ダブルの2枚目は同じ色のみ"
-            self.log = [f"{n}人でゲーム開始。あなたは P{hero + 1}（{rule}）"]
+            self.log = [f"{n}人でゲーム開始。あなたは {self.names[hero]}（{rule}）"]
 
     def require(self) -> Tracker:
         if self.tracker is None:
@@ -104,6 +106,18 @@ class Session:
         """盤面を1つ進める. ``fn(tracker)`` を排他して呼ぶ."""
         with self.lock:
             fn(self.require())
+            self.version += 1
+
+    def who(self, p: int) -> str:
+        return self.names[p] if 0 <= p < len(self.names) else f"P{p + 1}"
+
+    def rename(self, index: int, name: str) -> None:
+        with self.lock:
+            self.require()
+            if not 0 <= index < len(self.names):
+                raise TrackerError("その席は存在しません")
+            name = " ".join(name.split())[:12]
+            self.names[index] = name or f"P{index + 1}"
             self.version += 1
 
     def note(self, text: str) -> None:
@@ -176,6 +190,7 @@ class Session:
                 "secondOfferer": s.second_offerer,
                 "pendingDouble": s.pending_double,
                 "doubleAnyArtist": s.double_any_artist,
+                "names": list(self.names),
                 "log": list(self.log),
                 "prompt": self._prompt(t),
             }
@@ -190,7 +205,7 @@ class Session:
     def _prompt(self, t: Tracker) -> dict:
         s = t.state
         hero = t.hero
-        me = lambda p: "あなた" if p == hero else f"P{p + 1}"  # noqa: E731
+        me = lambda p: "あなた" if p == hero else self.who(p)  # noqa: E731
 
         if s.phase == PHASE_GAME_END:
             return {"kind": "game_end", "message": "ゲーム終了"}
@@ -243,6 +258,7 @@ class Session:
                 "isHero": s.seller == hero,
                 "max": s.money[s.seller],
                 "message": f"{me(s.seller)}が提示した額を入れてください",
+                "sellerName": self.who(s.seller),
             }
         return {
             "kind": "result",
@@ -336,7 +352,7 @@ class Handler(BaseHTTPRequestHandler):
             k = int(d["kind"])
             player = S.require().state.turn
             S.apply(lambda t: t.play(k))
-            S.note(f"P{player + 1} が {C.kind_name(k)} を出品")
+            S.note(f"{S.who(player)} が {C.kind_name(k)} を出品")
             return S.snapshot()
 
         if path == "/api/second":
@@ -344,8 +360,8 @@ class Handler(BaseHTTPRequestHandler):
             player = S.require().state.second_offerer
             S.apply(lambda t: t.second(k))
             S.note(
-                f"P{player + 1} が {C.kind_name(k)} を追加" if k is not None
-                else f"P{player + 1} は2枚目を出さない"
+                f"{S.who(player)} が {C.kind_name(k)} を追加" if k is not None
+                else f"{S.who(player)} は2枚目を出さない"
             )
             return S.snapshot()
 
@@ -359,14 +375,14 @@ class Handler(BaseHTTPRequestHandler):
             winner, price = int(d["winner"]), int(d["price"])
             seller = S.require().state.seller
             S.apply(lambda t: t.auction_result(winner, price))
-            dest = "銀行" if winner == seller else f"P{seller + 1}"
-            S.note(f"P{winner + 1} が {price} で落札（支払い先 {dest}）")
+            dest = "銀行" if winner == seller else S.who(seller)
+            S.note(f"{S.who(winner)} が {price} で落札（支払い先 {dest}）")
             return S.snapshot()
 
         if path == "/api/score":
             box = {}
             S.apply(lambda t: box.update(gains=t.score_round()))
-            S.note("決算: " + " / ".join(f"P{i + 1} +{g}" for i, g in enumerate(box["gains"])))
+            S.note("決算: " + " / ".join(f"{S.who(i)} +{g}" for i, g in enumerate(box["gains"])))
             # ラウンド4は配札がないので、そのまま手番の整理まで済ませる
             t = S.require()
             if t.state.phase != PHASE_GAME_END and C.DEAL_TABLE[t.n][t.state.round_idx] == 0:
@@ -379,6 +395,18 @@ class Handler(BaseHTTPRequestHandler):
                 counts[int(k)] += 1
             S.apply(lambda t: t.set_hero_hand(counts))
             S.note("手札を修正")
+            return S.snapshot()
+
+        if path == "/api/rename":
+            S.rename(int(d["index"]), str(d["name"]))
+            return S.snapshot()
+
+        if path == "/api/reset":
+            S.tracker = None
+            S.advisor = None
+            S.names = []
+            S.log = []
+            S.version += 1
             return S.snapshot()
 
         if path == "/api/undo":
